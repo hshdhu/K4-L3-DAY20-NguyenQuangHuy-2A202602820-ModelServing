@@ -6,183 +6,101 @@
 >
 > `make verify` sẽ fail nếu còn placeholder chưa điền. Đó là cố ý.
 
-**Họ Tên:** _<Họ Tên>_
-**MSSV:** _<MSSV>_
-**Cohort:** _<A20-K1 / A20-K2 / ...>_
-**Ngày submit:** _<YYYY-MM-DD>_
+**Họ Tên:** Nguyễn Quang Huy
+**MSSV:** 2A202602820
+**Cohort:** A20-K4
+**Ngày submit:** 10/6/2026
 
 ---
 
-## 1. Hardware & runtime  *(rubric 1, 2 — 10 điểm)*
+## 1. Hardware & runtime
 
-> Từ `make probe`. Paste output hoặc điền tay.
+- **OS:** Windows 11 AMD64; Python 3.12.10.
+- **CPU:** Intel Core i7-1165G7 @ 2.80GHz; 4 physical / 8 logical cores.
+- **CPU extensions:** probe chưa ghi nhận, không suy đoán AVX từ tên CPU.
+- **RAM:** 15.8 GB.
+- **Accelerator:** NVIDIA GeForce MX450, 2048 MiB VRAM; probe phát hiện CUDA và Vulkan.
+- **Runtime thực tế:** llama.cpp b10488, asset `llama-b10488-bin-win-vulkan-x64.zip` (Vulkan, không phải CUDA binary).
+- **Model:** Gemma 4 E2B (`gemma4-e2b`), `UD-Q4_K_XL` và `UD-Q2_K_XL`.
+- **Chạy ở đâu:** laptop local của tôi.
 
-- **OS:** _<macOS 14 / Windows 11 / Ubuntu 24.04 / ...>_
-- **CPU:** _<Apple M2 / Intel i7-12700H / AMD Ryzen 7 5800H>_
-- **Cores:** _<physical / logical>_
-- **CPU extensions:** _<AVX2 / AVX-512 / NEON / —>_
-- **RAM:** _<GB>_
-- **Accelerator:** _<NVIDIA RTX 4060 / Apple Metal / Vulkan / CPU only>_
-- **llama.cpp asset đã tải:** _<vd: llama-b10488-bin-macos-arm64.tar.gz>_
-- **Model đã dùng:** _<Gemma 4 E2B / Qwen3.5 0.8B>_ (`LAB_MODEL=`_<gemma4-e2b / qwen35-0.8b>_)
-- **Quantization:** _<primary>_ + _<compare>_ (từ `models/active.json`)
+**Setup story:** Windows PowerShell 5.1 đọc sai dấu em dash trong lab.ps1. Đổi sang ASCII và đặt Python xuất UTF-8 giúp probe chạy được. Sau đó bootstrap tạo virtualenv, cài package và tải runtime/models. hardware.json, models/active.json và ảnh 01 là bằng chứng.
 
-**Chạy ở đâu:** _<laptop của tôi / Colab / Kaggle>_
-_(Nếu dùng cloud fallback: nói rõ vì sao — RAM < 8 GB, setup fail, v.v. Không mất điểm.)_
-
-**Setup story** (≤ 80 chữ): điều gì cần thay đổi để lab chạy trên máy bạn? Có bước
-nào fail rồi phải workaround không?
-
-_Answer here._
-
----
-
-## 2. Đo lường  *(rubric 3, 4, 5 — 20 điểm)*
-
-> Paste bảng từ `benchmarks/01-quickstart-results.md` (`make bench` tự sinh).
+## 2. Đo lường
 
 | Quantization | Size (GB) | Load (ms) | TTFT P50/P95 (ms) | TPOT P50/P95 (ms) | E2E P50/P95/P99 (ms) | Decode (tok/s) |
 |---|--:|--:|--:|--:|--:|--:|
-| UD-Q4_K_XL | | | | | | |
-| UD-Q2_K_XL | | | | | | |
+| UD-Q4_K_XL | 2.97 | 11347 | 431 / 1282 | 27.2 / 27.8 | 2126 / 2985 / 2985 | 36.8 |
+| UD-Q2_K_XL | 2.24 | 6696 | 466 / 2049 | 27.6 / 30.2 | 2210 / 3734 / 3734 | 36.2 |
 
-**Quan sát** (≤ 60 chữ): 2-bit nhanh hơn bao nhiêu, và **có đáng không**? Bạn đã thử
-hỏi cùng một câu trên cả hai (`make serve` vs `.venv/bin/python labs/02-serve/serve.py --compare`)
-chưa? Chất lượng khác nhau thế nào?
+**Quan sát:** 2-bit nhỏ hơn 24.6% nhưng decode chậm hơn 1.6%. Cùng prompt TTFT/TPOT, temperature=0, max_tokens=384, hai bản trả lời đúng định nghĩa, gần tương đương nhưng nguyên nhân TPOT còn chung chung. Tôi giữ 4-bit vì đủ RAM và latency thấp hơn nhẹ. Một prompt chưa đại diện chất lượng tổng thể.
 
-_Answer here._
+Benchmark: threads=4, ngl=99, ctx=2048, max_tokens=64; warm-up bỏ, 10/10 request mỗi bản. P95/P99 nearest-rank với 10 mẫu là mẫu lớn nhất. Không suy ra cơ chế bottleneck từ chênh lệch decode nhỏ trong một lần chạy.
 
----
-
-## 3. Serving under load  *(rubric 8, 9, 10 — 20 điểm)*
-
-> Từ `benchmarks/02-server-results.md` (`make load-report`).
+## 3. Serving under load
 
 | Users | RPS | P50 (ms) | P95 (ms) | P99 (ms) | Eff. concurrency | Failures |
 |--:|--:|--:|--:|--:|--:|--:|
-| 10 | | | | | | |
-| 50 | | | | | | |
+| 10 | 0.65 | 13000 | 24000 | 25000 | 8.6 | 0.0% |
+| 50 | 1.02 | 33000 | 47000 | 49000 | 31.4 | 0.0% |
 
-- **Offered load tăng 5×, throughput thực tăng:** _<X.XX>×_
-- **P95 tăng:** _<X.XX>×_
-- **Effective concurrency ở 50 users:** _<số>_ so với `--parallel` = _<số>_ slots
+- Số user tăng 5x; throughput tăng **1.57x**, P95 tăng **1.96x**.
+- Effective concurrency 50 user: **31.4**, so với **4 slot**. L=RPS x mean E2E, gồm cả queue, không phải utilization.
+- Peak busy slots/decode: **3.96/4**; processing **4**, deferred **46**.
 
-**Peak `llamacpp:n_busy_slots_per_decode`** (từ `make metrics` khi `make load-50` đang
-chạy): _<số>_ / _<slots>_ slots
+**Saturation reading:** RPS chỉ tăng 1.57x, P95 tăng 1.96x và deferred=46 cho thấy hàng đợi ở 50 user. Chưa biết ngưỡng user chính xác hay tách queue/compute định lượng. Tôi thử giới hạn in-flight/hàng đợi trước để giảm queue time; tăng slot có thể tạo áp lực KV cache/VRAM. Đề xuất cần đo lại, không phải speedup đã chứng minh.
 
-**Saturation reading** (≤ 80 chữ): server của bạn bão hoà ở đâu, và **bằng chứng nào**
-thuyết phục bạn? Nếu P95 tăng nhanh hơn RPS thì phần latency thêm đó là queue time hay
-compute time — bạn biết bằng cách nào? Nếu bạn phải nâng goodput@SLO, bạn sẽ đổi knob
-nào **trước**, và vì sao knob đó?
+**SLO:** ít nhất 95% completion E2E <=25 giây. CSV 10 user có max=24.63 giây nên goodput khoảng 0.653 req/s. 50 user có P50=33 giây, P95=47 giây, không đạt; percentile gợi ý goodput dưới khoảng 0.511 req/s, không phải giá trị chính xác. Cần latency từng request để tính chính xác và accounting cho request chưa hoàn thành. TTFT/TPOT dưới tải chưa được đo riêng.
 
-_Answer here._
+CSV ghi 38/59 request còn terminal cuối ghi 39/61; tôi dùng CSV làm nguồn cho bảng, giữ nguyên screenshot. Khác biệt có thể do thời điểm xuất snapshot. Closed-loop/think time và cửa sổ 60 giây giới hạn áp dụng Little's Law như một ước lượng steady-state.
 
----
-
-## 4. Integration  *(rubric 12, 13 — 15 điểm)*
-
-> Từ `make pipeline`. Nói thật cái nào real, cái nào stub — stub **không** mất điểm.
+## 4. Integration
 
 | Day | Piece | Real hay stub? |
 |---|---|---|
-| N16 Cloud/IaC | | |
-| N17 Data pipeline | | |
-| N18 Lakehouse | | |
-| N19 Vector + features | | |
-| N20 Serving | `llama-server` | real |
+| N16 Cloud/IaC | Local laptop, không tích hợp IaC | stub / chưa tích hợp |
+| N17 Data pipeline | TOY_DOCS viết sẵn | stub |
+| N18 Lakehouse | Danh sách Python trong RAM | stub |
+| N19 Vector + features | Keyword overlap top-3, không embedding/index | stub |
+| N20 Serving | llama-server HTTP localhost:8080 | real |
 
-**Latency split** (mean của 3 query, từ output của `pipeline.py`):
+Mean của 3 query: embed **0.0 ms**, retrieve **0.1 ms**, llm **5018.0 ms**, total **5018.1 ms**. Dominant stage **llm**, khoảng **100%** theo báo cáo làm tròn.
 
-- embed: _<ms>_
-- retrieve: _<ms>_
-- llm: _<ms>_
-- **stage chiếm nhiều nhất:** _<stage>_ (_<%>_ của total)
+**Reflection:** LLM HTTP call chiếm gần toàn bộ latency, đúng kỳ vọng với corpus đồ chơi. Tôi ưu tiên giữ connection và giảm ngân sách output/context có kiểm tra chất lượng. Server compute thấp hơn client call, cần trace tìm overhead. Tối ưu retrieve 0.1 ms không giúp giảm tổng 2x. Chưa đo speedup các đề xuất này.
 
-**Reflection** (≤ 60 chữ): bottleneck ở đâu? Có khớp với kỳ vọng của bạn không? Nếu
-phải giảm latency của pipeline này 2×, bạn sẽ tấn công vào đâu?
+## 5. The single change that mattered most
 
-_Answer here._
+**Change:** Bật cấu hình offload Vulkan (`ngl=0 -> 99`), giữ **4 thread**, cùng model Q4, llama-bench tg128 và hai lần lặp mỗi điểm.
 
----
-
-## 5. The single change that mattered most  *(rubric 11 — 10 điểm)*
-
-> **Phần quan trọng nhất của report.** Không cần bonus track: `make tune` đã cho bạn
-> một before/after thật (`benchmarks/01-tuning-tg128.md`). Đổi quantization,
-> `LAB_N_CTX`, hay `--parallel` rồi đo lại cũng được.
-
-**Change:** _<vd: hạ -t từ 16 xuống 8; vd: đổi sang UD-Q2_K_XL; vd: --parallel 4 → 8>_
-
-```
-before:  <số + đơn vị>
-after:   <số + đơn vị>
-speedup: <X.Y>×
+```text
+before:  13.65 tok/s (CPU-only, t=4, ngl=0)
+after:   38.54 tok/s (offload requested, t=4, ngl=99)
+speedup: 2.823x
 ```
 
-**Tại sao nó work** (1–2 đoạn — đây là phần grader đọc kỹ nhất):
+Offload chuyển phần xử lý layer được hỗ trợ sang GPU, dùng khả năng xử lý song song và hệ thống bộ nhớ GPU thay vì toàn bộ decode trên CPU. Đây là cơ chế phù hợp với throughput tăng và đường cong offload gần như phẳng từ 1 đến 16 CPU thread. ngl=99 là yêu cầu offload, không chứng minh 99 layer thực tế chạy trên GPU; chưa có counters để tách compute và bandwidth. Runtime là Vulkan. Hai sweep chạy tuần tự, chưa kiểm soát nhiệt độ/power state hoặc lặp xen kẽ, nên tôi báo speedup quan sát được trên workload tg128, không khẳng định HTTP server cũng tăng 2.823x.
 
-_Giải thích như đang nói với bạn ngồi cạnh. Bám vào **cơ chế**, không phải "vibes":
-memory bandwidth? vector width? cache residency? scheduling? queueing? Nếu kết quả
-**khác** với kỳ vọng từ deck — nói rõ, và giải thích vì sao. Grader thưởng điểm cho
-lập luận đúng về một kết quả bất ngờ, hơn là một con số đẹp không được giải thích._
+Một thay đổi được kiểm chứng thêm trong CPU-only là 4 -> 8 thread: 13.65 -> 16.41 tok/s (**1.202x**). Đỉnh đã đo ở 8 logical thread, còn 16 thread chỉ đạt 10.63 tok/s, giảm 35.2%. Điều này khác kỳ vọng knee tại 4 physical core. SMT có thể tận dụng tài nguyên core khi luồng khác chờ dữ liệu/dependency và giúp dequantization/tính toán; 16 thread oversubscribe gây scheduling overhead và cạnh tranh cache/execution/memory. Các cơ chế này là giả thuyết phù hợp số đo, chưa được xác nhận bằng hardware counters. Tôi giữ 4 thread khi offload, chỉ dùng 8 nếu CPU-only.
 
-_Answer here._
+Bằng chứng: `benchmarks/01-tuning-tg128-gpu.md` và `01-tuning-tg128-cpu.md`, cùng JSON chưa sửa số đo.
 
----
+## 6. Bonus
 
-## 6. Bonus  *(optional — tối đa 10 điểm)*
+Không thực hiện bonus.
 
-> Bỏ trống nếu không làm. Xem `docs/bonus/README.md`. Đừng làm hết — **một** finding sâu
-> ăn điểm hơn năm bảng nông.
+## 7. Điều làm tôi ngạc nhiên nhất
 
-**Đã làm:** _<B1 build-compare / B2 sweep nào / B4 challenge nào / B5 lựa chọn nào>_
-
-**Numbers:**
-
-```
-before:  <số>
-after:   <số>
-speedup: <X.Y>×
-```
-
-**Điều này nói lên gì mà deck chưa nói:**
-
-_(để trống nếu bạn không làm phần này)_
-
----
-
-## 7. Điều làm bạn ngạc nhiên nhất  *(optional)*
-
-_(1–2 câu. Không bắt buộc, nhưng grader đọc hết.)_
-
-_(để trống nếu bạn không làm phần này)_
-
----
+CPU-only vẫn tăng throughput khi dùng 8 logical thread; cấu hình offload lại gần như không nhạy với CPU thread. Số thread tối ưu phụ thuộc backend, không thể áp dụng chung.
 
 ## 8. Self-check trước khi push
 
-- [ ] `hardware.json` committed
-- [ ] `models/active.json` committed
-- [ ] `benchmarks/01-quickstart-results.md` committed (`make bench`)
-- [ ] `benchmarks/01-tuning-tg128.md` committed (`make tune`)
-- [ ] `benchmarks/02-server-results.md` committed (`make load-report`)
-- [ ] `benchmarks/02-server-batching-u50.md` hoặc `-metrics-u50.csv` committed (`make metrics`)
-- [ ] `benchmarks/locust-10_stats.csv` + `locust-50_stats.csv` committed (`make load-10` / `load-50`)
-- [ ] `benchmarks/03-integration-results.md` committed (`make pipeline`)
-- [ ] Mọi section **"required — replace this line"** trong các file `benchmarks/*.md`
-      đã được thay bằng nhận xét của bạn
-- [ ] 5 screenshots trong `submission/screenshots/`
-- [ ] `make verify` → **exit 0**
-- [ ] Repo tên đúng mẫu `K4-L3-DAY20-HoVaTen-MSSV-ModelServing` (xem `docs/SUBMISSION.md`)
-- [ ] Repo GitHub ở chế độ **public**
-- [ ] Đã push và paste public URL vào VinUni LMS **trước 23:59 (UTC+7) ngày làm lab**
-- [ ] **Không** commit `models/*.gguf`, `runtime/` hay `.env` (đã có trong `.gitignore`)
+- Bằng chứng setup: hardware.json, models/active.json, ảnh 01.
+- Baseline: report/JSON, câu trả lời 4-bit/2-bit, ảnh 02.
+- Serving: ảnh 03a và 03b; load test CSV và ảnh 04/05.
+- Batching: report và metrics CSV; integration: report và JSON.
+- Origin đúng tên repo nộp. Commit, push và xác nhận public/LMS do tôi thực hiện sau khi đọc lại báo cáo.
+- Không commit weights, runtime, .venv hoặc .env.
 
-**Quan trọng:** repo phải **public** đến khi điểm được công bố. Private → grader không
-xem được → 0 điểm.
+## 9. Khai báo sử dụng AI
 
----
-
-## 9. Khai báo sử dụng AI  *(xem `docs/RULES.md` §3)*
-
-_(Công cụ nào, dùng vào việc gì. Ghi "Không dùng" nếu không dùng.)_
+Tôi dùng Codex để kiểm tra/sửa lỗi PowerShell và encoding, hướng dẫn chạy lab, đọc số đo, chạy pipeline, hỗ trợ soạn nhận xét/REFLECTION và kiểm tra file. Số đo lấy từ laptop khai báo ở §1; screenshot do tôi chụp. Các giải thích cơ chế được AI hỗ trợ đề xuất, có ghi rõ giới hạn bằng chứng.

@@ -1,0 +1,3 @@
+﻿**TTFT (Time to First Token)** is the latency from the user's request to receiving the first token from the LLM. **TPOT (Time Per Output Token)** is the average time taken to generate each subsequent token.
+
+A cause of high TTFT is slow model loading or initial prompt processing overhead. A cause of high TPOT is inefficient decoding strategies or high computational load per token generation step.
